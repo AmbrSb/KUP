@@ -1,0 +1,104 @@
+#! /bin/sh
+
+# BSD 3-Clause License
+# 
+# Copyright (c) 2020, Amin Saba
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+# 
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+# 
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+M=$1
+X=$2
+
+create_makefile () {
+	module_id=$1
+	test_name=$2
+	{
+		printf 'CFLAGS+=\t-DTEST_ID="\\"kupdev [test-%s]: \\""\n' "$test_name"
+		printf 'KMOD=\t\ttest-%s\n' "$test_name"
+		printf 'SRCS=\t\t../test_module_%s.c test-%s.c\n' "$module_id" "$test_name"
+		printf ".include <bsd.kmod.mk>"
+	} > test-cases/Makefile-$test_name
+}
+
+
+if [ ! -f test-cases/test-$X.c ]; then
+	echo "Test case $X not found"
+	exit 1
+fi
+
+create_makefile $M $X
+
+echo "Running test $X"
+kldunload test-cases/obj/test-$X.ko
+kldunload `kldstat | grep "test-" | awk '{print $5}'`
+cd test-cases
+make -f Makefile-$X clean
+make -f Makefile-$X
+if [ $? -ne 0 ]; then
+	echo "-------------------------"
+	echo "[ FAIL ] $X (Failed to compile the kernel module)"
+	echo "-------------------------"
+	exit 2
+fi
+cd ..
+
+cd test-cases
+clang  user-$X.c -L../../kuplib/build -lutil -lkup -o user-$X -Wl,--rpath,../kuplib/build
+if [ $? -ne 0 ]; then
+	echo "-------------------------"
+	echo "[ FAIL ] $X (Failed to compile user space test stub)"
+	echo "-------------------------"
+	exit 3
+fi
+cd ..
+
+kldload ../kupdev/kup_dev.ko
+kldload test-cases/obj/test-$X.ko
+if [ $? -ne 0 ]; then
+	echo "-------------------------"
+	echo "[ FAIL ] $X (Failed to load kernel module)"
+	echo "-------------------------"
+	exit 4
+fi
+
+if [ $? -eq 0 ]; then
+	echo "-------------------------"
+	echo "[ PASS ] $X"
+	echo "-------------------------"
+else
+	echo "-------------------------"
+	echo "[ FAIL ] $X"
+	echo "-------------------------"
+fi
+
+sleep 1
+kldunload test-cases/bobj/test-$X.ko
+cd test-cases
+make -f Makefile-$X clean
+rm user-$X
+rm Makefile-$test_name
+cd ..
