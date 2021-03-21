@@ -47,7 +47,7 @@
 #include <assert.h>
 #include <libutil.h>
 
-#include "kuplib.h"
+#include "kup.h"
 
 #define KERNPROXY_API
 

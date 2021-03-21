@@ -53,7 +53,7 @@ fi
 create_makefile $M $X
 
 echo "Running test $X"
-kldunload test-cases/obj/test-$X.ko
+kldunload test-cases/test-$X.ko
 kldunload `kldstat | grep "test-" | awk '{print $5}'`
 cd test-cases
 make -f Makefile-$X clean
@@ -77,7 +77,7 @@ fi
 cd ..
 
 kldload ../kupdev/kup_dev.ko
-kldload test-cases/obj/test-$X.ko
+kldload test-cases/test-$X.ko
 if [ $? -ne 0 ]; then
 	echo "-------------------------"
 	echo "[ FAIL ] $X (Failed to load kernel module)"
@@ -96,7 +96,7 @@ else
 fi
 
 sleep 1
-kldunload test-cases/bobj/test-$X.ko
+kldunload test-cases/test-$X.ko
 cd test-cases
 make -f Makefile-$X clean
 rm user-$X

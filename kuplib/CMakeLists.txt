@@ -82,7 +82,7 @@ include_directories(/usr/local/include include)
 link_directories(/usr/local/lib)
 
 add_library(kup SHARED
-            ${PROJECT_SOURCE_DIR}/kuplib.h
+            ${PROJECT_SOURCE_DIR}/kup.h
             ${PROJECT_SOURCE_DIR}/kuplib.c)
 target_link_libraries(kup util)
 
